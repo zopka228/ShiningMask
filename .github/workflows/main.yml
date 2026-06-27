@@ -14,9 +14,13 @@ jobs:
 
     - run: sudo xcode-select -s /Applications/Xcode_15.4.app
 
+    - name: Show structure
+      run: find . -type f | head -50
+
     - name: Build
       working-directory: ShiningMask
       run: |
+        ls -la
         xcodebuild \
           -project ShiningMask.xcodeproj \
           -scheme ShiningMask \
