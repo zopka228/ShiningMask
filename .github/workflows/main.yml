@@ -18,6 +18,7 @@ jobs:
 
     - name: Build
       run: |
+        cd ShiningMask
         xcodebuild \
           -project ShiningMask.xcodeproj \
           -scheme ShiningMask \
@@ -27,7 +28,7 @@ jobs:
           CODE_SIGNING_ALLOWED=NO \
           ONLY_ACTIVE_ARCH=NO \
           clean build \
-          -derivedDataPath build
+          -derivedDataPath ../build
 
     - name: Package IPA
       run: |
