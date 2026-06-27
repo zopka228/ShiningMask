@@ -19,7 +19,8 @@
 		A2000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ContentView.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A2000003 /* BLEManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BLEManager.swift; path = BLEManager.swift;
  sourceTree = "<group>"; };
-		A2000004 /* MaskViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MaskViewModel.swift; path = ViewModels/MaskViewModel.swift; sourceTree = "<group>"; };
+		A2000004 /* MaskViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MaskViewModel.swift; path = MaskViewModel.swift;
+ sourceTree = "<group>"; };
 		A2000005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
