@@ -49,9 +49,7 @@ class MaskViewModel: ObservableObject {
     func fillGrid() { grid = Array(repeating: Array(repeating: true, count: 24), count: 12) }
     func invertGrid() { grid = grid.map { $0.map { !$0 } } }
 
-    func loadPreset(_ preset: Preset) {
-        grid = preset.grid
-    }
+    func loadPreset(_ preset: Preset) { grid = preset.grid }
 
     func sendBrightness(_ value: Double) {
         guard case .connected = ble.state else { return }
@@ -79,65 +77,74 @@ struct Preset: Identifiable {
     let icon: String
     let grid: [[Bool]]
 
-    static let all: [Preset] = [skull, heart, smile, lightning, diamond, cross]
+    static let all: [Preset] = [skull, heart, smile, diamond, cross]
 
-    static let skull = Preset(name: "Череп", icon: "💀", grid: {
-        var g = blank
+    static let skull: Preset = {
+        var g = blankGrid()
         let pts: [(Int,Int)] = [
-            (1,4),(1,5),(1,6),(1,7),(1,8),(1,9),(1,10),(1,11),(1,12),(1,13),(1,14),(1,15),(1,16),(1,17),(1,18),(1,19),
-            (2,2),(2,3),(2,4),(2,19),(2,20),(2,21),(3,1),(3,2),(3,21),(3,22),(4,1),(4,22),
-            (5,1),(5,4),(5,5),(5,6),(5,8),(5,9),(5,10),(5,13),(5,14),(5,15),(5,17),(5,18),(5,19),(5,22),
-            (6,1),(6,4),(6,5),(6,6),(6,8),(6,9),(6,10),(6,13),(6,14),(6,15),(6,17),(6,18),(6,19),(6,22),
-            (7,1),(7,22),(8,1),(8,2),(8,21),(8,22),
-            (9,2),(9,3),(9,7),(9,8),(9,9),(9,14),(9,15),(9,16),(9,20),(9,21),
-            (10,4),(10,5),(10,6),(10,7),(10,8),(10,9),(10,14),(10,15),(10,16),(10,17),(10,18),(10,19),
-            (11,9),(11,10),(11,11),(11,12),(11,13),(11,14),
+            (1,4),(1,18),(2,2),(2,20),(3,1),(3,21),(4,1),(4,21),
+            (5,1),(5,4),(5,5),(5,8),(5,9),(5,14),(5,15),(5,18),(5,21),
+            (6,1),(6,4),(6,5),(6,8),(6,9),(6,14),(6,15),(6,18),(6,21),
+            (7,1),(7,21),(8,2),(8,20),(9,3),(9,7),(9,8),(9,15),(9,16),(9,20),
+            (10,5),(10,6),(10,7),(10,8),(10,15),(10,16),(10,17),(10,18),
+            (11,9),(11,10),(11,13),(11,14),
         ]
-        pts.forEach { if $0.0 < 12 && $0.1 < 24 { g[$0.0][$0.1] = true } }
-        return g
-    }())
+        for p in pts { if p.0 < 12 && p.1 < 24 { g[p.0][p.1] = true } }
+        for c in 4...18 { g[1][c] = true }
+        return Preset(name: "Череп", icon: "💀", grid: g)
+    }()
 
-    static let heart = Preset(name: "Сердце", icon: "❤️", grid: {
-        var g = blank
-        for r in 0..<12 { for c in 0..<24 {
-            let x = Double(c - 12) / 7.0, y = Double(6 - r) / 5.0
-            if pow(x*x + y*y - 1, 3) - x*x*y*y*y < 0 { g[r][c] = true }
-        }}
-        return g
-    }())
-
-    static let smile = Preset(name: "Улыбка", icon: "😊", grid: {
-        var g = blank
-        for r in 0..<12 { for c in 0..<24 {
-            let x = Double(c) - 12, y = Double(r) - 6
-            if abs(sqrt(x*x + y*y) - 5.2) < 0.9 { g[r][c] = true }
-        }}
-        [[3,8],[3,9],[3,14],[3,15]].forEach { g[$0[0]][$0[1]] = true }
-        for c in 8...15 { let r = Int(6 + sqrt(max(0, 8 - Double(c-12)*Double(c-12)*0.18))); if r < 12 { g[r][c] = true } }
-        return g
-    }())
-
-    static let lightning = Preset(name: "Молния", icon: "⚡", grid: {
-        var g = blank
-        [(0,12),(0,13),(1,10),(1,11),(2,8),(2,9),(3,6),(3,7),(3,8),(3,9),(3,10),(3,11),(3,12),(3,13),
-         (4,8),(4,9),(4,10),(4,11),(5,10),(5,11),(6,12),(6,13),(7,14),(7,15),(8,16),(8,17)].forEach {
-            if $0.0 < 12 && $0.1 < 24 { g[$0.0][$0.1] = true }
+    static let heart: Preset = {
+        var g = blankGrid()
+        for r in 0..<12 {
+            for c in 0..<24 {
+                let x = Double(c - 12) / 7.0
+                let y = Double(6 - r) / 5.0
+                let val = pow(x*x + y*y - 1, 3) - x*x*y*y*y
+                if val < 0 { g[r][c] = true }
+            }
         }
-        return g
-    }())
+        return Preset(name: "Сердце", icon: "❤️", grid: g)
+    }()
 
-    static let diamond = Preset(name: "Алмаз", icon: "💎", grid: {
-        var g = blank
-        for r in 0..<12 { for c in 0..<24 { if abs(c - 12) + abs(r - 6) <= 5 { g[r][c] = true } } }
-        return g
-    }())
+    static let smile: Preset = {
+        var g = blankGrid()
+        for r in 0..<12 {
+            for c in 0..<24 {
+                let dx = Double(c) - 12.0
+                let dy = Double(r) - 6.0
+                let dist = (dx*dx + dy*dy).squareRoot()
+                if abs(dist - 5.2) < 0.9 { g[r][c] = true }
+            }
+        }
+        g[3][8] = true; g[3][9] = true; g[3][14] = true; g[3][15] = true
+        for c in 8...15 {
+            let dx = Double(c) - 12.0
+            let dy2 = max(0.0, 8.0 - dx*dx*0.18)
+            let r = Int(6.0 + dy2.squareRoot())
+            if r < 12 { g[r][c] = true }
+        }
+        return Preset(name: "Улыбка", icon: "😊", grid: g)
+    }()
 
-    static let cross = Preset(name: "Крест", icon: "✝️", grid: {
-        var g = blank
+    static let diamond: Preset = {
+        var g = blankGrid()
+        for r in 0..<12 {
+            for c in 0..<24 {
+                if abs(c - 12) + abs(r - 6) <= 5 { g[r][c] = true }
+            }
+        }
+        return Preset(name: "Алмаз", icon: "💎", grid: g)
+    }()
+
+    static let cross: Preset = {
+        var g = blankGrid()
         for c in 0..<24 { g[5][c] = true; g[6][c] = true }
         for r in 0..<12 { g[r][11] = true; g[r][12] = true }
-        return g
-    }())
+        return Preset(name: "Крест", icon: "✝️", grid: g)
+    }()
 
-    private static var blank: [[Bool]] { Array(repeating: Array(repeating: false, count: 24), count: 12) }
+    static func blankGrid() -> [[Bool]] {
+        Array(repeating: Array(repeating: false, count: 24), count: 12)
+    }
 }
