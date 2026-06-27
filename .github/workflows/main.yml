@@ -10,15 +10,13 @@ jobs:
     runs-on: macos-14
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-    - name: Select Xcode
-      run: sudo xcode-select -s /Applications/Xcode_15.4.app
+    - run: sudo xcode-select -s /Applications/Xcode_15.4.app
 
     - name: Build
+      working-directory: ShiningMask
       run: |
-        cd ShiningMask
         xcodebuild \
           -project ShiningMask.xcodeproj \
           -scheme ShiningMask \
@@ -28,17 +26,15 @@ jobs:
           CODE_SIGNING_ALLOWED=NO \
           ONLY_ACTIVE_ARCH=NO \
           clean build \
-          -derivedDataPath ../build
+          -derivedDataPath $GITHUB_WORKSPACE/build
 
     - name: Package IPA
       run: |
         mkdir -p Payload
         cp -r build/Build/Products/Release-iphoneos/ShiningMask.app Payload/
         zip -r ShiningMask.ipa Payload
-        rm -rf Payload
 
-    - name: Upload IPA
-      uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v4
       with:
         name: ShiningMask-IPA
         path: ShiningMask.ipa
