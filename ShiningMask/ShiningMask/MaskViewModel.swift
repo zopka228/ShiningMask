@@ -12,6 +12,7 @@ class MaskViewModel: ObservableObject {
     @Published var selectedAnimation: Int = 1
     @Published var activeTab: AppTab = .draw
     @Published var showDeviceList = false
+    @Published var isSending = false
 
     enum DrawMode { case draw, erase }
     enum AppTab: String, CaseIterable {
@@ -48,17 +49,11 @@ class MaskViewModel: ObservableObject {
     func clearGrid() { grid = Array(repeating: Array(repeating: false, count: 24), count: 12) }
     func fillGrid() { grid = Array(repeating: Array(repeating: true, count: 24), count: 12) }
     func invertGrid() { grid = grid.map { $0.map { !$0 } } }
-
     func loadPreset(_ preset: Preset) { grid = preset.grid }
 
     func sendBrightness(_ value: Double) {
         guard case .connected = ble.state else { return }
         ble.sendBrightness(Int(value))
-    }
-
-    func sendText() {
-        guard case .connected = ble.state else { return }
-        ble.sendSpeed(Int(scrollSpeed))
     }
 
     func sendAnimation(_ index: Int) {
@@ -68,6 +63,64 @@ class MaskViewModel: ObservableObject {
 
     func sendColor(_ r: UInt8, _ g: UInt8, _ b: UInt8) {
         selectedColor = (r, g, b)
+    }
+
+    // MARK: - Отправка пикселей на маску
+    func sendCurrentPixels() {
+        guard case .connected = ble.state else { return }
+        isSending = true
+
+        // Шаг 1: отправить DATS команду (запрос загрузки)
+        // 24*12 = 288 пикселей * 3 RGB = 864 байт = 0x0360
+        let dats = Data([0x9C, 0x89, 0xBA, 0x6C, 0x2F, 0x96, 0x16, 0xA8, 0xDE, 0xA8, 0x06, 0x22, 0x6E, 0x9A, 0x13, 0xFB])
+        ble.sendCmd(dats)
+
+        // Шаг 2: через 300мс отправить пиксели в 960A
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            self.sendPixelData()
+        }
+    }
+
+    private func sendPixelData() {
+        let r = selectedColor.0, g = selectedColor.1, b = selectedColor.2
+        var rgb: [UInt8] = []
+        for row in grid {
+            for on in row {
+                rgb += on ? [r, g, b] : [0, 0, 0]
+            }
+        }
+
+        // Разбиваем на пакеты по 98 байт данных
+        let chunkSize = 98
+        var packets: [[UInt8]] = []
+        var idx: UInt8 = 0
+        var offset = 0
+        while offset < rgb.count {
+            let chunk = Array(rgb[offset..<min(offset + chunkSize, rgb.count)])
+            packets.append([UInt8(chunk.count + 1), idx] + chunk)
+            offset += chunkSize
+            idx += 1
+        }
+
+        // Отправляем с задержкой между пакетами
+        for (i, packet) in packets.enumerated() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.05) {
+                self.ble.sendData(Data(packet))
+                if i == packets.count - 1 {
+                    // После последнего пакета — команда PLAY
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        let play = Data([0x5A, 0x13, 0x97, 0x3B, 0x5D, 0xD6, 0x88, 0x3D, 0x62, 0x66, 0x62, 0xF4, 0xE1, 0x76, 0x34, 0xC2])
+                        self.ble.sendCmd(play)
+                        self.isSending = false
+                    }
+                }
+            }
+        }
+    }
+
+    func sendText() {
+        guard case .connected = ble.state else { return }
+        ble.sendSpeed(Int(scrollSpeed))
     }
 }
 
@@ -100,8 +153,7 @@ struct Preset: Identifiable {
             for c in 0..<24 {
                 let x = Double(c - 12) / 7.0
                 let y = Double(6 - r) / 5.0
-                let val = pow(x*x + y*y - 1, 3) - x*x*y*y*y
-                if val < 0 { g[r][c] = true }
+                if pow(x*x + y*y - 1, 3) - x*x*y*y*y < 0 { g[r][c] = true }
             }
         }
         return Preset(name: "Сердце", icon: "❤️", grid: g)
