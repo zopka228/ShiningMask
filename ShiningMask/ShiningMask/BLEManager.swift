@@ -212,6 +212,8 @@ class BLEManager: NSObject, ObservableObject {
 
     // MARK: - Internal send
 
+    func sendCmd(_ data: Data) { send(data, to: cmdCharacteristic) }
+    func sendData(_ data: Data) { send(data, to: dataCharacteristic) }
     private func send(_ data: Data, to characteristic: CBCharacteristic?) {
         guard let p = peripheral, let ch = characteristic else { return }
         let type: CBCharacteristicWriteType = ch.properties.contains(.writeWithoutResponse) ? .withoutResponse : .withResponse
